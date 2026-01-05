@@ -1,12 +1,10 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="nitrado_api",
     version="0.2",
     packages=find_packages(),
-    install_requires=[
-        "aiohttp"
-    ],
+    install_requires=["aiohttp"],
     author="DonMatraca",
     author_email="r.gallogomez@gmail.com",
     description="Python module to interact with Nitrado API endpoints.",

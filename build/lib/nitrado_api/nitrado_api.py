@@ -1,18 +1,18 @@
-import aiohttp
 import asyncio
-import logging
 import json
+import logging
 from ftplib import FTP
+
+import aiohttp
+
 
 class NitradoAPI:
     BASE_URL = "https://api.nitrado.net"
 
     def __init__(self, nitrado_token):
         self.nitrado_token = nitrado_token
-        self.headers = {
-            "Authorization": f"Bearer {self.nitrado_token}"
-        }
-        
+        self.headers = {"Authorization": f"Bearer {self.nitrado_token}"}
+
     async def _make_request(self, method, endpoint, **kwargs):
         """Auxiliary method to handle API requests with error and rate-limit handling."""
         url = f"{self.BASE_URL}{endpoint}"
@@ -56,13 +56,19 @@ class NitradoAPI:
         endpoint = f"/services/{nitrado_id}/gameservers/settings"
         if list_type not in ["whitelist", "bans", "priority"]:
             raise ValueError("Invalid list type. Use 'whitelist', 'bans', or 'priority'.")
-        
+
         current_settings = await self._make_request("GET", endpoint)
         if not current_settings:
             logging.error("Failed to retrieve current server settings.")
             return None
-        
-        current_list = current_settings.get("data", {}).get("gameserver", {}).get("settings", {}).get("general", {}).get(list_type, "")
+
+        current_list = (
+            current_settings.get("data", {})
+            .get("gameserver", {})
+            .get("settings", {})
+            .get("general", {})
+            .get(list_type, "")
+        )
         current_members = set(current_list.split("\r"))
 
         if action == "add":
@@ -71,16 +77,11 @@ class NitradoAPI:
             updated_members = current_members.difference(members)
         else:
             raise ValueError("Invalid action. Use 'add' or 'remove'.")
-        
-        list_data = {
-            "category": "general",
-            "key": list_type,
-            "value": "\r".join(updated_members)
-        }
-        
+
+        list_data = {"category": "general", "key": list_type, "value": "\r".join(updated_members)}
+
         response = await self._make_request("POST", endpoint, json=list_data)
         return response
-
 
     async def get_ftp_credentials(self, nitrado_id):
         """Retrieve FTP credentials from server details."""
@@ -140,7 +141,7 @@ class NitradoAPI:
             "hour": str(hours),
             "day": "*",
             "month": "*",
-            "weekday": "*"
+            "weekday": "*",
         }
         response = await self._make_request("POST", endpoint, json=data)
         return response
@@ -149,21 +150,23 @@ class NitradoAPI:
         """Validate XML/JSON file syntax."""
         local_path = f"/tmp/{file_path.split('/')[-1]}"
         await self.download_file(nitrado_id, file_path, local_path)
-        
-        file_extension = local_path.split('.')[-1].lower()
+
+        file_extension = local_path.split(".")[-1].lower()
         try:
-            if file_extension == 'xml':
+            if file_extension == "xml":
                 import xml.etree.ElementTree as ET
+
                 ET.parse(local_path)
                 return "XML syntax is valid"
-            elif file_extension == 'json':
-                with open(local_path, 'r') as f:
+            elif file_extension == "json":
+                with open(local_path) as f:
                     json.load(f)
                 return "JSON syntax is valid"
         except Exception as e:
-            return f"Syntax error in {file_extension.upper()} file: {str(e)}"
+            return f"Syntax error in {file_extension.upper()} file: {e!s}"
         finally:
             import os
+
             os.remove(local_path)
 
     async def add_event(self, nitrado_id, event_details):
@@ -171,13 +174,13 @@ class NitradoAPI:
         events_path = "/path/to/events.xml"
         local_path = "/tmp/events.xml"
         await self.download_file(nitrado_id, events_path, local_path)
-        
-        with open(local_path, "r") as file:
+
+        with open(local_path) as file:
             content = file.read()
         new_event = f"<event name='{event_details['name']}' ... />"
         content = content.replace("</events>", f"{new_event}\n</events>")
         with open(local_path, "w") as file:
             file.write(content)
-        
+
         await self.upload_file(nitrado_id, local_path, events_path)
         logging.info("Event added successfully.")
